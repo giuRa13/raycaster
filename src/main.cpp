@@ -1,6 +1,7 @@
 #include "SFML/System/Clock.hpp"
 #include "SFML/System/Vector2.hpp"
 #include "SFML/Window/Keyboard.hpp"
+#include "SFML/Window/WindowEnums.hpp"
 #include "map.h"
 #include "player.h"
 #include "renderer.h"
@@ -11,7 +12,7 @@
 
 int main()
 {
-    sf::RenderWindow window { sf::VideoMode { { 1200, 675 } }, "Raycaster" };
+    sf::RenderWindow window { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
 
     std::vector<std::vector<int>> grid = {
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
@@ -48,9 +49,10 @@ int main()
         player.update(deltaTime);
 
         window.clear();
-        map.draw(window);
-        renderer.drawRays(window, player, map);
-        player.draw(window);
+        // map.draw(window);
+        // renderer.drawRays(window, player, map);
+        // player.draw(window);
+        renderer.draw3dView(window, player, map);
         window.display();
     }
 
