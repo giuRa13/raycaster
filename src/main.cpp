@@ -29,7 +29,7 @@ int main()
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
     };
 
-    Map map(48.0f, grid);
+    Map map(48.0f, RESOURCES_PATH "map.png");
 
     Player player;
     player.position = sf::Vector2f(50, 50);

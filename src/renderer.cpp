@@ -12,12 +12,13 @@
 
 constexpr float PI = 3.141592653589793f;
 constexpr float PLAYER_FOV = 60.0f;
-constexpr size_t MAX_RAYCAST_DEPTH = 16;
+constexpr size_t MAX_RAYCAST_DEPTH = 64;
 constexpr size_t NUM_RAYS = 600;
 constexpr float COLUMN_WIDTH = SCREEN_W / (float)NUM_RAYS;
 
 struct Ray {
     sf::Vector2f hitPosition;
+    sf::Vector2u mapPosition;
     float distance;
     bool hit;
     bool isHitVertical;
@@ -38,6 +39,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
     float angle = player.angle - PLAYER_FOV / 2.0f;
     float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
     const float maxRenderDistance = MAX_RAYCAST_DEPTH * map.getCellSize();
+    const float maxFogDistance = maxRenderDistance / 4.0f;
 
     for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
 
@@ -62,8 +64,22 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             float wallOffset = SCREEN_H / 2.0f - wallHeight / 2.0f; // ( center in screen )
             sf::RectangleShape column(sf::Vector2f { COLUMN_WIDTH, wallHeight });
             column.setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
-            // column.setFillColor(sf::Color(255 * shade, 255 * shade, 255 * shade));
-            column.setFillColor(sf::Color(250 * shade, 255 * shade, 255 * shade));
+
+            // const sf::Color fogColor = sf::Color(100, 170, 250);
+            const sf::Color fogColor = sf::Color(20, 20, 20);
+            float fogPercentage = (ray.distance / maxFogDistance);
+            if (fogPercentage > 1.0f) {
+                fogPercentage = 1.0f;
+            }
+
+            sf::Color color = map.getGrid()[ray.mapPosition.y][ray.mapPosition.x];
+            // column.setFillColor(sf::Color(color.r * shade, color.g * shade, color.b * shade)); // no fog
+            color = sf::Color(color.r * shade, color.g * shade, color.b * shade);
+            column.setFillColor(
+                sf::Color((1.0f - fogPercentage) * color.r + fogPercentage * fogColor.r,
+                    (1.0f - fogPercentage) * color.g + fogPercentage * fogColor.g,
+                    (1.0f - fogPercentage) * color.b + fogPercentage * fogColor.b));
+
             target.draw(column);
         }
     }
@@ -102,6 +118,7 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
     float vdist = std::numeric_limits<float>::max();
     float hdist = std::numeric_limits<float>::max();
 
+    sf::Vector2u vMapPos, hMapPos;
     sf::Vector2f vRayPos, hRayPos, offset;
 
     // Vertical (look right or left)
@@ -124,9 +141,10 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
         int mapX = (int)(vRayPos.x / cellSize);
         int mapY = (int)(vRayPos.y / cellSize);
 
-        if (mapY < grid.size() && mapX < grid[mapY].size() && grid[mapY][mapX]) {
+        if (mapY < grid.size() && mapX < grid[mapY].size() && grid[mapY][mapX] != sf::Color::Black) {
             hit = true;
             vdist = std::sqrt((vRayPos.x - start.x) * (vRayPos.x - start.x) + (vRayPos.y - start.y) * (vRayPos.y - start.y));
+            vMapPos = sf::Vector2u(mapX, mapY);
             break;
         }
 
@@ -144,7 +162,7 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
         hRayPos.y = std::floor(start.y / cellSize) * cellSize - 0.01f; // Y-nearest = player.y - (player.y / cellsize) * cellsize
         hRayPos.x = (start.y - hRayPos.y) * htan + start.x; // X-nearest = Ynearest / tan(a)  [ tan(a) = yn / xn]
         offset.y = -cellSize; // Ystep = cellsize
-        offset.x = -offset.y * htan; // Xstep =  Ystep / tan(a)  [ tan(a) = ys / xs ]
+        offset.x = -offset.y * htan; // Xstep =  Ystep / tan(a)  [ tan(a) = ys / xs ]     (rect triangle)
     } else {
         hdof = MAX_RAYCAST_DEPTH;
     }
@@ -153,9 +171,10 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
         int mapX = (int)(hRayPos.x / cellSize);
         int mapY = (int)(hRayPos.y / cellSize);
 
-        if (mapY < grid.size() && mapX < grid[mapY].size() && grid[mapY][mapX]) {
+        if (mapY < grid.size() && mapX < grid[mapY].size() && grid[mapY][mapX] != sf::Color::Black) {
             hit = true;
             hdist = std::sqrt((hRayPos.x - start.x) * (hRayPos.x - start.x) + (hRayPos.y - start.y) * (hRayPos.y - start.y));
+            hMapPos = sf::Vector2u(mapX, mapY);
             break;
         }
 
@@ -163,9 +182,9 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
     }
 
     return Ray {
-        sf::Vector2f { hdist < vdist ? hRayPos : vRayPos },
-        std::min(hdist, vdist),
-        hit,
-        vdist < hdist
+        hdist < vdist ? hRayPos : vRayPos,
+        hdist < vdist ? hMapPos : vMapPos,
+        std::min(hdist, vdist), hit,
+        vdist <= hdist
     };
 }
