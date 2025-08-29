@@ -31,10 +31,11 @@ int main()
 
     Map map(48.0f, RESOURCES_PATH "map.png");
 
-    Player player;
+    Player player {};
     player.position = sf::Vector2f(50, 50);
 
-    Renderer renderer;
+    Renderer renderer {};
+    renderer.init();
 
     sf::Clock gameClock;
 

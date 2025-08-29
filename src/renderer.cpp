@@ -1,13 +1,16 @@
 #include "renderer.h"
 #include "SFML/Graphics/Color.hpp"
 #include "SFML/Graphics/PrimitiveType.hpp"
+#include "SFML/Graphics/Rect.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
 #include "SFML/Graphics/RenderTarget.hpp"
+#include "SFML/Graphics/Sprite.hpp"
 #include "SFML/Graphics/Vertex.hpp"
 #include "SFML/System/Vector2.hpp"
 #include "map.h"
 #include <cmath>
 #include <cstddef>
+#include <iostream>
 #include <limits>
 
 constexpr float PI = 3.141592653589793f;
@@ -26,6 +29,21 @@ struct Ray {
 
 static Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map);
 
+void Renderer::init()
+{
+    if (!wallTexture.loadFromFile(RESOURCES_PATH "wall_texture.png")) {
+        std::cerr << "Failed to load walltexture.png\n";
+        return;
+    }
+
+    if (wallTexture.getSize().x != wallTexture.getSize().y) {
+        std::cerr << "ERROR: Texture is not square\n";
+        return;
+    }
+
+    wallSprite = std::make_unique<sf::Sprite>(wallTexture);
+}
+
 void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const Map& map)
 {
     sf::RectangleShape rectangle(sf::Vector2f(SCREEN_W, SCREEN_H / 2.0f));
@@ -36,10 +54,15 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
     rectangle.setFillColor(sf::Color(70, 70, 70));
     target.draw(rectangle);
 
-    float angle = player.angle - PLAYER_FOV / 2.0f;
-    float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
+    // const sf::Color fogColor = sf::Color(100, 170, 250);
+    const sf::Color fogColor = sf::Color(20, 20, 20);
     const float maxRenderDistance = MAX_RAYCAST_DEPTH * map.getCellSize();
     const float maxFogDistance = maxRenderDistance / 4.0f;
+
+    float angle = player.angle - PLAYER_FOV / 2.0f;
+    float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
+
+    sf::RectangleShape column { sf::Vector2f { 1.0f, 1.0f } };
 
     for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
 
@@ -50,6 +73,23 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             ray.distance *= std::cos((player.angle - angle) * PI / 180.0f);
 
             float wallHeight = (map.getCellSize() * SCREEN_H) / ray.distance;
+            float wallOffset = SCREEN_H / 2.0f - wallHeight / 2.0f; // ( center in screen )
+
+            // map texture
+            float textureX;
+            if (ray.isHitVertical) {
+                textureX = ray.hitPosition.y - wallTexture.getSize().x * std::floor(ray.hitPosition.y / wallTexture.getSize().x);
+            } else {
+                textureX = wallTexture.getSize().x * std::ceil(ray.hitPosition.x / wallTexture.getSize().x) - ray.hitPosition.x;
+            }
+
+            wallSprite->setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
+            wallSprite->setTextureRect(sf::IntRect(
+                { (int)textureX, 0 },
+                { (int)wallTexture.getSize().x / (int)map.getCellSize(), (int)wallTexture.getSize().y }));
+            wallSprite->setScale(sf::Vector2f {
+                COLUMN_WIDTH, wallHeight / wallTexture.getSize().y });
+
             if (wallHeight > SCREEN_H) {
                 wallHeight = SCREEN_H;
             }
@@ -61,25 +101,25 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
             float shade = (ray.isHitVertical ? 0.8f : 1.0f) * brightness;
 
-            float wallOffset = SCREEN_H / 2.0f - wallHeight / 2.0f; // ( center in screen )
-            sf::RectangleShape column(sf::Vector2f { COLUMN_WIDTH, wallHeight });
-            column.setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
-
-            // const sf::Color fogColor = sf::Color(100, 170, 250);
-            const sf::Color fogColor = sf::Color(20, 20, 20);
             float fogPercentage = (ray.distance / maxFogDistance);
             if (fogPercentage > 1.0f) {
                 fogPercentage = 1.0f;
             }
 
-            sf::Color color = map.getGrid()[ray.mapPosition.y][ray.mapPosition.x];
+            // fog effect
+            /*sf::Color color = map.getGrid()[ray.mapPosition.y][ray.mapPosition.x];
             // column.setFillColor(sf::Color(color.r * shade, color.g * shade, color.b * shade)); // no fog
             color = sf::Color(color.r * shade, color.g * shade, color.b * shade);
             column.setFillColor(
                 sf::Color((1.0f - fogPercentage) * color.r + fogPercentage * fogColor.r,
                     (1.0f - fogPercentage) * color.g + fogPercentage * fogColor.g,
-                    (1.0f - fogPercentage) * color.b + fogPercentage * fogColor.b));
+                    (1.0f - fogPercentage) * color.b + fogPercentage * fogColor.b));*/
+            column.setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
+            column.setScale(sf::Vector2f { COLUMN_WIDTH, wallHeight });
+            column.setFillColor(sf::Color(fogColor.r, fogColor.g, fogColor.b, fogPercentage * 255));
 
+            wallSprite->setColor(sf::Color(255 * shade, 255 * shade, 255 * shade));
+            target.draw(*wallSprite);
             target.draw(column);
         }
     }
