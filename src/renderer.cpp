@@ -1,23 +1,25 @@
 #include "renderer.h"
 #include "SFML/Graphics/Color.hpp"
 #include "SFML/Graphics/PrimitiveType.hpp"
-#include "SFML/Graphics/Rect.hpp"
+// #include "SFML/Graphics/Rect.hpp"
 #include "SFML/Graphics/RectangleShape.hpp"
+#include "SFML/Graphics/RenderStates.hpp"
 #include "SFML/Graphics/RenderTarget.hpp"
 #include "SFML/Graphics/Sprite.hpp"
 #include "SFML/Graphics/Vertex.hpp"
+#include "SFML/Graphics/VertexArray.hpp"
 #include "SFML/System/Vector2.hpp"
 #include "map.h"
 #include <cmath>
 #include <cstddef>
 #include <iostream>
-#include <limits>
+// #include <limits>
 
 constexpr float PI = 3.141592653589793f;
 constexpr float PLAYER_FOV = 60.0f;
 constexpr size_t MAX_RAYCAST_DEPTH = 64;
-constexpr size_t NUM_RAYS = 600;
-constexpr float COLUMN_WIDTH = SCREEN_W / (float)NUM_RAYS;
+// constexpr size_t NUM_RAYS = 600;
+// constexpr float COLUMN_WIDTH = SCREEN_W / (float)NUM_RAYS;
 
 struct Ray {
     sf::Vector2f hitPosition;
@@ -27,7 +29,7 @@ struct Ray {
     bool isHitVertical;
 };
 
-static Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map);
+// static Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map);
 
 void Renderer::init()
 {
@@ -56,15 +58,105 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
     // const sf::Color fogColor = sf::Color(100, 170, 250);
     const sf::Color fogColor = sf::Color(20, 20, 20);
-    const float maxRenderDistance = MAX_RAYCAST_DEPTH * map.getCellSize();
-    const float maxFogDistance = maxRenderDistance / 4.0f;
+    // const float maxRenderDistance = MAX_RAYCAST_DEPTH * map.getCellSize();
+    // const float maxFogDistance = maxRenderDistance / 4.0f;
 
-    float angle = player.angle - PLAYER_FOV / 2.0f;
-    float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
+    // float angle = player.angle - PLAYER_FOV / 2.0f;
+    // float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
 
-    sf::RectangleShape column { sf::Vector2f { 1.0f, 1.0f } };
+    // sf::RectangleShape column { sf::Vector2f { 1.0f, 1.0f } };
 
-    for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
+    float radians = player.angle * PI / 180.0f;
+    sf::Vector2f direction { std::cos(radians), std::sin(radians) }; // convert radians to a direction vector
+    sf::Vector2f plane { -direction.y, direction.x }; // camera plane (perpendicular to the direction)
+
+    sf::VertexArray walls { sf::PrimitiveType::Lines };
+
+    // loop every column not angles (each column is one pixel)
+    for (size_t i = 0; i < SCREEN_W; i++) {
+        // column in camera space (-1 to 1)
+        float cameraX = i * 2.0f / SCREEN_W - 1.0f; // i = 1200 -> 1200/1200 -> 1*2 -> 2-1 -> 1
+        sf::Vector2f rayPos = player.position / map.getCellSize(); // ( cellSize = 0.5)
+        sf::Vector2f rayDir = direction + plane * cameraX; // direction the ray supposed to move
+
+        // in DDA only move the amount needed to get to the next side of the wall ( from one X/Y side to the next X/Y side)
+        // no need the correct lenght, in DDA only ratio (between X and Y) matters
+        sf::Vector2f deltaDist { std::abs(1.0f / rayDir.x), std::abs(1.0f / rayDir.y) };
+
+        sf::Vector2i mapPos { rayPos }; // truncate floating point (get Integer)
+        sf::Vector2i step;
+        sf::Vector2f sideDist; // make shure we start at a right value X/Y side (initial distance might not be at the wall)
+
+        if (rayDir.x < 0.0f) { // left
+            step.x = -1;
+            sideDist.x = (-mapPos.x + rayPos.x) * deltaDist.x; // perpendicular distance * delta = actual distance
+        } else { // right
+            step.x = 1;
+            sideDist.x = (mapPos.x - rayPos.x + 1.0f) * deltaDist.x;
+        }
+
+        if (rayDir.y < 0.0f) { // down
+            step.y = -1;
+            sideDist.y = (-mapPos.y + rayPos.y) * deltaDist.y;
+        } else { // up
+            step.y = 1;
+            sideDist.y = (mapPos.y - rayPos.y + 1.0f) * deltaDist.y;
+        }
+
+        // DDA
+        bool didHit {}, isHitVertical {};
+        size_t depth = 0;
+        while (!didHit && depth < MAX_RAYCAST_DEPTH) {
+
+            if (sideDist.x < sideDist.y) { // Horizontal wall
+                sideDist.x += deltaDist.x;
+                mapPos.x += step.x;
+                isHitVertical = false;
+            } else {
+                sideDist.y += deltaDist.y;
+                mapPos.y += step.y;
+                isHitVertical = true;
+            }
+
+            int x = mapPos.x, y = mapPos.y;
+            const auto& grid = map.getGrid();
+
+            if (y >= 0 && y < grid.size() && x >= 0 && x < grid[y].size() && grid[x][y] != sf::Color::Black) {
+                didHit = true;
+            }
+
+            depth++;
+        }
+
+        // Drawing
+        if (didHit) {
+            float perpWallDist = isHitVertical ? sideDist.y - deltaDist.y : sideDist.x - deltaDist.x; // perpendicular distance to avoid fisheye
+            float wallHeight = SCREEN_H / perpWallDist;
+
+            float wallStart = (-wallHeight + SCREEN_H) / 2.0f;
+            float wallEnd = (wallHeight + SCREEN_H) / 2.0f;
+
+            // texture coords
+            float textureSize = wallTexture.getSize().x;
+            float wallX = isHitVertical ? rayPos.x + perpWallDist * rayDir.x : rayPos.y + perpWallDist * rayDir.y;
+            // to calculate position relative to the current wall starting position :
+            wallX -= std::floor(wallX); // if hit at middle of second tile ->  wallX = 1.5 -> - 1(floor of 1.5) = 0.5
+            float textureX = wallX * textureSize;
+
+            float brightness = 1.0f - (perpWallDist / (float)MAX_RAYCAST_DEPTH);
+            if (isHitVertical) {
+                brightness *= 0.7f;
+            }
+            sf::Color color = sf::Color(255 * brightness, 255 * brightness, 255 * brightness);
+
+            walls.append(sf::Vertex { sf::Vector2f { (float)i, wallStart }, color, sf::Vector2f { textureX, 0.0f } });
+            walls.append(sf::Vertex { sf::Vector2f { (float)i, wallEnd }, color, sf::Vector2f { textureX, textureSize } });
+            sf::RenderStates states { &wallTexture };
+            target.draw(walls, states);
+        }
+    }
+
+    /*for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
 
         Ray ray = castRay(player.position, angle, map);
 
@@ -101,19 +193,12 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
             float shade = (ray.isHitVertical ? 0.8f : 1.0f) * brightness;
 
-            float fogPercentage = (ray.distance / maxFogDistance);
+            float fogPercentage = (ray.distance / maxFogfDistance);
             if (fogPercentage > 1.0f) {
                 fogPercentage = 1.0f;
             }
 
             // fog effect
-            /*sf::Color color = map.getGrid()[ray.mapPosition.y][ray.mapPosition.x];
-            // column.setFillColor(sf::Color(color.r * shade, color.g * shade, color.b * shade)); // no fog
-            color = sf::Color(color.r * shade, color.g * shade, color.b * shade);
-            column.setFillColor(
-                sf::Color((1.0f - fogPercentage) * color.r + fogPercentage * fogColor.r,
-                    (1.0f - fogPercentage) * color.g + fogPercentage * fogColor.g,
-                    (1.0f - fogPercentage) * color.b + fogPercentage * fogColor.b));*/
             column.setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
             column.setScale(sf::Vector2f { COLUMN_WIDTH, wallHeight });
             column.setFillColor(sf::Color(fogColor.r, fogColor.g, fogColor.b, fogPercentage * 255));
@@ -122,10 +207,10 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             target.draw(*wallSprite);
             target.draw(column);
         }
-    }
+    }*/
 }
 
-void Renderer::drawRays(sf::RenderTarget& target, const Player& player, const Map& map)
+/*void Renderer::drawRays(sf::RenderTarget& target, const Player& player, const Map& map)
 {
     for (float angle = player.angle - PLAYER_FOV / 2.0f; angle < player.angle + PLAYER_FOV; angle += 1.0f) {
 
@@ -141,9 +226,9 @@ void Renderer::drawRays(sf::RenderTarget& target, const Player& player, const Ma
             target.draw(line, 2, sf::PrimitiveType::Lines);
         }
     }
-}
+}*/
 
-Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start = player.position )
+/*Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start = player.position )
 {
     float angle = angleInDegrees * PI / 180.0f;
     float vtan = -tan(angle); // ( tangent )
@@ -227,4 +312,4 @@ Ray castRay(sf::Vector2f start, float angleInDegrees, const Map& map) // ( start
         std::min(hdist, vdist), hit,
         vdist <= hdist
     };
-}
+}*/
