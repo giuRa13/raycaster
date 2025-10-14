@@ -9,6 +9,7 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/VideoMode.hpp>
+#include <string>
 
 int main()
 {
@@ -55,6 +56,7 @@ int main()
         // player.draw(window);
         renderer.draw3dView(window, player, map);
         window.display();
+        window.setTitle("Raycaster | " + std::to_string(1.0f / deltaTime));
     }
 
     return 0;

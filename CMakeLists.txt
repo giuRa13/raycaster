@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>") #we want to use the static runtime
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
 
+set(CXXFLAGS "-O3")
+set(CMAKE_CXX_FLAGS "${CXXFLAGS}")
+
 project(raycaster)
 
 add_subdirectory(thirdparty/SFML)		
@@ -41,3 +44,8 @@ target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${CMAKE_CURRENT_SOURC
 
 target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SFML::Graphics SFML::System)
 
+#set_source_files_properties( 
+    #renderer.cpp 
+    #PROPERTIES
+    #COMPILE_FLAGS -O3 
+    #)
