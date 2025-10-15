@@ -57,11 +57,19 @@ void Renderer::init()
     }
 
     wallSprite = std::make_unique<sf::Sprite>(wallTexture);
+
+    screenTexture = sf::Texture(sf::Vector2u((unsigned)SCREEN_W, (unsigned)SCREEN_H));
+    screenSprite = std::make_unique<sf::Sprite>(screenTexture);
+
+    // Pixel buffer for floor (RGBA)
+    screenPixels.resize((size_t)SCREEN_W * (size_t)SCREEN_H * 4, 0);
 }
 
 void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const Map& map)
 {
-    sf::Image image(sf::Vector2u(SCREEN_W, SCREEN_H), sf::Color(0, 0, 0, 0)); // alpha transparent avoid hide sky
+    // sf::Image image(sf::Vector2u(SCREEN_W, SCREEN_H), sf::Color(0, 0, 0, 0)); // alpha transparent avoid hide sky
+    //  Clear lower half (floor area)
+    std::fill(screenPixels.begin(), screenPixels.end(), 0);
 
     // sf::RectangleShape rectangle(sf::Vector2f(SCREEN_W, SCREEN_H / 2.0f));
     // rectangle.setFillColor(sf::Color(100, 170, 250));
@@ -109,7 +117,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
     target.draw(sky, 6, sf::PrimitiveType::Triangles, sf::RenderStates(&skyTexture));
 
     // floor textures
-    // uint8_t floorPixels[(size_t)SCREEN_W * (size_t)SCREEN_H * 4] {};
+    const auto floorSize = floorImage.getSize().x;
     for (size_t y = (int)SCREEN_H / 2 + 1; y < SCREEN_H; y++) { // FLOOR: start from the first row *below* the horizon to avoid division by zero
         sf::Vector2f rayDirLeft { direction - plane }, rayDirRight { direction + plane };
         float denom = (float)y - (SCREEN_H / 2.0f);
@@ -128,32 +136,27 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             texCoords.x &= (int)textureSize - 1;
             texCoords.y &= (int)textureSize - 1;
 
-            sf::Color color = floorImage.getPixel((sf::Vector2u)texCoords);
-            /*floorPixels[(x + y * (size_t)SCREEN_W) * 4 + 0] = color.r;
-            floorPixels[(x + y * (size_t)SCREEN_W) * 4 + 1] = color.g;
-            floorPixels[(x + y * (size_t)SCREEN_W) * 4 + 2] = color.b;
-            floorPixels[(x + y * (size_t)SCREEN_W) * 4 + 3] = color.a;*/
-            image.setPixel((sf::Vector2u) { (unsigned)x, (unsigned)y }, color);
+            sf::Color c = floorImage.getPixel((sf::Vector2u)texCoords);
+            size_t idx = (x + y * (size_t)SCREEN_W) * 4;
+            screenPixels[idx + 0] = c.r;
+            screenPixels[idx + 1] = c.g;
+            screenPixels[idx + 2] = c.b;
+            screenPixels[idx + 3] = 255;
+
             floorPos += floorStep;
         }
     }
 
     // Sky
     /*for (size_t y = 0; y < SCREEN_H / 2; ++y) {
-        for (size_t x = 0; x < SCREEN_W; ++x) {
+        for (size_t x = 0; x < SCREEN_W; ++x)
             image.setPixel({ (unsigned)x, (unsigned)y }, sf::Color(100, 170, 250));
-        }
     }*/
 
-    // sf::Image image(sf::Vector2u(SCREEN_W, SCREEN_H));
-    sf::Texture screenTexture;
-    if (!screenTexture.loadFromImage(image)) {
-        std::cerr << "Failed to load texture from image\n";
-        return;
-    }
-
-    sf::Sprite screenSprite { screenTexture };
-    target.draw(screenSprite);
+    // Update the persistent screen sprite with the new image
+    screenTexture.update(screenPixels.data());
+    // Draw the screen sprite
+    target.draw(*screenSprite);
 
     sf::VertexArray walls { sf::PrimitiveType::Lines };
 

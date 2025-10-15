@@ -24,4 +24,9 @@ private:
     sf::Texture wallTexture, skyTexture;
     std::unique_ptr<sf::Sprite> wallSprite; // sprite is constructed later;
     sf::Image floorImage;
+
+    // persistent screen buffer (sf::Texture + sf::Sprite) so don’t recreate them each frame (just update)
+    sf::Texture screenTexture;
+    std::unique_ptr<sf::Sprite> screenSprite;
+    std::vector<std::uint8_t> screenPixels; // RGBA buffer for floor
 };
