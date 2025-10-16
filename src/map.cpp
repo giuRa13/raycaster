@@ -4,20 +4,22 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/System/Vector2.hpp>
+#include <cstddef>
+#include <fstream>
 #include <iostream>
 #include <vector>
 
-Map::Map(float cellSize, int width, int height)
-    : cellSize(cellSize)
-    , grid(height, std::vector(width, 0))
+Map::Map(float cellsize)
+    : cellSize(cellsize)
+    , grid()
 {
 }
 
-/*Map::Map(float cellSize, std::vector<std::vector<int>> grid)
-    : cellSize(cellSize)
-    , grid(grid)
+Map::Map(float cellsize, int width, int height)
+    : cellSize(cellsize)
+    , grid(height, std::vector(width, 0))
 {
-}*/
+}
 
 Map::Map(float cellSize, const std::string& filename)
     : cellSize(cellSize)
@@ -57,6 +59,7 @@ void Map::draw(sf::RenderTarget& target)
                 cell.setFillColor(sf::Color(234, 131, 165)); // 235,47,75
             }*/
 
+            // if grid[y][x] is non-zero ---> White.  if grid[y][x] is 0 ---> Black
             cell.setFillColor(grid[y][x] ? sf::Color::White : sf::Color(70, 70, 70));
             cell.setPosition(sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
 
@@ -67,8 +70,49 @@ void Map::draw(sf::RenderTarget& target)
 
 void Map::setMapCell(int x, int y, int value)
 {
-    if (y > 0 && y < grid.size() && x > 0 && x < grid[y].size()) {
+    if (y >= 0 && y < grid.size() && x >= 0 && x < grid[y].size()) {
         grid[y][x] = value;
+    }
+}
+
+void Map::save(const std::filesystem::path& path)
+{
+    std::ofstream out { path, std::ios::out | std::ios::binary };
+
+    if (!out.is_open()) {
+        std::cerr << "Failed to open file: " << path << std::endl;
+    }
+
+    size_t w = grid.size();
+    size_t h = grid[0].size();
+    out.write(reinterpret_cast<const char*>(&w), sizeof(w));
+    out.write(reinterpret_cast<const char*>(&h), sizeof(h));
+
+    for (size_t y = 0; y < grid.size(); y++) {
+        for (size_t x = 0; x < grid[y].size(); x++) {
+            out.write(reinterpret_cast<const char*>(&grid[y][x]), sizeof(grid[y][x]));
+        }
+    }
+}
+
+void Map::load(const std::filesystem::path& path)
+{
+    std::ifstream in { path, std::ios::in | std::ios::binary };
+
+    if (!in.is_open()) {
+        std::cerr << "Failed to open file: " << path << std::endl;
+    }
+
+    size_t w, h;
+    in.read(reinterpret_cast<char*>(&w), sizeof(w));
+    in.read(reinterpret_cast<char*>(&h), sizeof(h));
+
+    grid = std::vector(h, std::vector(w, 0));
+
+    for (size_t y = 0; y < grid.size(); y++) {
+        for (size_t x = 0; x < grid[y].size(); x++) {
+            in.read(reinterpret_cast<char*>(&grid[y][x]), sizeof(grid[y][x]));
+        }
     }
 }
 

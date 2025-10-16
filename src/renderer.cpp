@@ -91,7 +91,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
     float radians = player.angle * PI / 180.0f;
     sf::Vector2f direction { std::cos(radians), std::sin(radians) }; // convert radians to a direction vector
-    sf::Vector2f plane { -direction.y, direction.x * 0.66f }; // camera plane (perpendicular to the direction)
+    sf::Vector2f plane { -direction.y, direction.x * 0.66f }; // camera plane (perpendicular to the direction) (horizontal line in front of player and each screen column(y) is a point on it)
     sf::Vector2f position = player.position / map.getCellSize();
 
     // sky texture
@@ -168,7 +168,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
         // in DDA only move the amount needed to get to the next side of the wall ( from one X/Y side to the next X/Y side)
         // no need the correct lenght, in DDA only ratio (between X and Y) matters
-        sf::Vector2f deltaDist { std::abs(1.0f / rayDir.x), std::abs(1.0f / rayDir.y) };
+        sf::Vector2f deltaDist { std::abs(1.0f / rayDir.x), std::abs(1.0f / rayDir.y) }; // (is the distance the ray must travel (in world units) along the ray to move exactly 1 cell in the X direction)
 
         sf::Vector2i mapPos { rayPos }; // truncate floating point (get Integer)
         sf::Vector2i step;

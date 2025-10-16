@@ -41,7 +41,9 @@ int main()
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
     };*/
 
-    Map map(48.0f, RESOURCES_PATH "map.png");
+    // Map map(48.0f, RESOURCES_PATH "map.png");
+    Map map { 48.0f };
+    map.load(RESOURCES_PATH "test.map");
 
     Player player {};
     player.position = sf::Vector2f(50, 50);

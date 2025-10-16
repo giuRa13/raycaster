@@ -14,6 +14,16 @@ void Editor::init(sf::RenderWindow& window)
 
 void Editor::run(sf::RenderWindow& window, Map& map)
 {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save")) {
+                map.save(RESOURCES_PATH "test.map");
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+
     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
     if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right)) {
