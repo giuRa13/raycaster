@@ -1,16 +1,16 @@
 #include "renderer.h"
-#include "SFML/Graphics/Color.hpp"
-#include "SFML/Graphics/PrimitiveType.hpp"
 #include "player.h"
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/PrimitiveType.hpp>
 // #include "SFML/Graphics/Rect.hpp"
-#include "SFML/Graphics/RectangleShape.hpp"
-#include "SFML/Graphics/RenderStates.hpp"
-#include "SFML/Graphics/RenderTarget.hpp"
-#include "SFML/Graphics/Sprite.hpp"
-#include "SFML/Graphics/Vertex.hpp"
-#include "SFML/Graphics/VertexArray.hpp"
-#include "SFML/System/Vector2.hpp"
 #include "map.h"
+#include <SFML/Graphics/RectangleShape.hpp>
+#include <SFML/Graphics/RenderStates.hpp>
+#include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/Sprite.hpp>
+#include <SFML/Graphics/Vertex.hpp>
+#include <SFML/Graphics/VertexArray.hpp>
+#include <SFML/System/Vector2.hpp>
 #include <cmath>
 #include <cstddef>
 #include <iostream>
@@ -142,7 +142,6 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             screenPixels[idx + 1] = c.g;
             screenPixels[idx + 2] = c.b;
             screenPixels[idx + 3] = 255;
-
             floorPos += floorStep;
         }
     }
@@ -210,7 +209,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             const auto& grid = map.getGrid();
 
             if (y >= 0 && y < (int)grid.size() && x >= 0 && x < (int)grid[y].size()) {
-                if (grid[y][x] != sf::Color::Black) {
+                if (grid[y][x]) { // grid[y][x] != sf::Color::Black
                     didHit = true;
                 }
             }

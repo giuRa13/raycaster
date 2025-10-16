@@ -1,8 +1,10 @@
 #pragma once
 
-#include "SFML/Graphics/RenderTarget.hpp"
+#include <SFML/Graphics/RenderTarget.hpp>
 #include <string>
 #include <vector>
+
+typedef std::vector<std::vector<int>> MapGrid;
 
 class Map {
 
@@ -13,10 +15,10 @@ public:
 
     void draw(sf::RenderTarget& target);
 
-    const std::vector<std::vector<sf::Color>>& getGrid() const;
+    const MapGrid& getGrid() const;
     float getCellSize() const;
 
 private:
-    std::vector<std::vector<sf::Color>> grid;
+    MapGrid grid;
     float cellSize;
 };

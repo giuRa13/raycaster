@@ -1,21 +1,28 @@
-#include "SFML/System/Clock.hpp"
-#include "SFML/System/Vector2.hpp"
-#include "SFML/Window/Keyboard.hpp"
-#include "SFML/Window/WindowEnums.hpp"
+#include "editor.h"
 #include "map.h"
 #include "player.h"
 #include "renderer.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/System/Clock.hpp>
+#include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Event.hpp>
+#include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/VideoMode.hpp>
+#include <SFML/Window/WindowEnums.hpp>
+#include <imgui-SFML.h>
+#include <imgui.h>
 #include <string>
 
 int main()
 {
-    sf::RenderWindow window { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
+    // sf::RenderWindow window { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
+    auto window = sf::RenderWindow { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
+    window.setVerticalSyncEnabled(true);
+    if (!ImGui::SFML::Init(window))
+        return -1;
 
-    std::vector<std::vector<int>> grid = {
+    /*std::vector<std::vector<int>> grid = {
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
         { 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 },
         { 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1 },
@@ -28,7 +35,7 @@ int main()
         { 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1 },
         { 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1 },
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    };
+    };*/
 
     Map map(48.0f, RESOURCES_PATH "map.png");
 
@@ -38,23 +45,55 @@ int main()
     Renderer renderer {};
     renderer.init();
 
+    Editor editor {};
+    editor.init(window);
+
+    enum class State {
+        Editor,
+        Game
+    } state
+        = State::Game;
+
     sf::Clock gameClock;
 
     while (window.isOpen()) {
         float deltaTime = gameClock.restart().asSeconds();
 
         while (auto event = window.pollEvent()) {
-            if (event->is<sf::Event::Closed>() | sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Escape))
+            ImGui::SFML::ProcessEvent(window, *event);
+            if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Escape)) {
                 window.close();
+            } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+                if (key->scancode == sf::Keyboard::Scancode::M) {
+                    state = state == State::Game ? State::Editor : State::Game;
+                }
+            }
+
+            if (state == State::Editor) {
+                editor.handleEvents(*event);
+            }
         }
 
-        player.update(deltaTime);
+        ImGui::SFML::Update(window, gameClock.restart());
+
+        ImGui::Begin("Hello, world!");
+        ImGui::Button("button");
+        ImGui::End();
 
         window.clear();
         // map.draw(window);
         // renderer.drawRays(window, player, map);
         // player.draw(window);
-        renderer.draw3dView(window, player, map);
+        if (state == State::Game) {
+            window.setView(window.getDefaultView());
+            player.update(deltaTime);
+            renderer.draw3dView(window, player, map);
+        } else {
+            editor.run(window);
+            map.draw(window);
+        }
+
+        ImGui::SFML::Render(window);
         window.display();
         window.setTitle("Raycaster | " + std::to_string(1.0f / deltaTime));
     }
