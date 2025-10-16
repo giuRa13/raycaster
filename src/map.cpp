@@ -65,6 +65,13 @@ void Map::draw(sf::RenderTarget& target)
     }
 }
 
+void Map::setMapCell(int x, int y, int value)
+{
+    if (y > 0 && y < grid.size() && x > 0 && x < grid[y].size()) {
+        grid[y][x] = value;
+    }
+}
+
 // const std::vector<std::vector<int>>& Map::getGrid() const { return grid; }
 const MapGrid& Map::getGrid() const { return grid; }
 

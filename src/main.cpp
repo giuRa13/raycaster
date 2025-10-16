@@ -12,6 +12,7 @@
 #include <SFML/Window/WindowEnums.hpp>
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <iostream>
 #include <string>
 
 int main()
@@ -19,8 +20,11 @@ int main()
     // sf::RenderWindow window { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
     auto window = sf::RenderWindow { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
     window.setVerticalSyncEnabled(true);
-    if (!ImGui::SFML::Init(window))
+
+    if (!ImGui::SFML::Init(window)) {
+        std::cout << "Failed to init ImGui\n";
         return -1;
+    }
 
     /*std::vector<std::vector<int>> grid = {
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
@@ -60,7 +64,9 @@ int main()
         float deltaTime = gameClock.restart().asSeconds();
 
         while (auto event = window.pollEvent()) {
+
             ImGui::SFML::ProcessEvent(window, *event);
+
             if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Escape)) {
                 window.close();
             } else if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
@@ -76,20 +82,20 @@ int main()
 
         ImGui::SFML::Update(window, gameClock.restart());
 
+        ImGui::ShowDemoWindow();
+
         ImGui::Begin("Hello, world!");
         ImGui::Button("button");
         ImGui::End();
 
         window.clear();
-        // map.draw(window);
-        // renderer.drawRays(window, player, map);
-        // player.draw(window);
+
         if (state == State::Game) {
             window.setView(window.getDefaultView());
             player.update(deltaTime);
             renderer.draw3dView(window, player, map);
         } else {
-            editor.run(window);
+            editor.run(window, map);
             map.draw(window);
         }
 
@@ -97,6 +103,8 @@ int main()
         window.display();
         window.setTitle("Raycaster | " + std::to_string(1.0f / deltaTime));
     }
+
+    ImGui::SFML::Shutdown();
 
     return 0;
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(raycaster LANGUAGES CXX)
+project(raycaster LANGUAGES C CXX)
 
 set(CXXFLAGS "-O3")
 set(CMAKE_CXX_FLAGS "${CXXFLAGS}")
@@ -43,3 +43,8 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES} )
 target_compile_features("${CMAKE_PROJECT_NAME}" PRIVATE cxx_std_17)
 target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/")
 target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SFML::Graphics ImGui-SFML::ImGui-SFML)
+
+
+# Automatically copy compile_commands.json to the project root after generation
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
