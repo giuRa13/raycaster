@@ -2,6 +2,7 @@
 #include "map.h"
 #include "player.h"
 #include "renderer.h"
+#include "resources.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
@@ -26,24 +27,13 @@ int main()
         return -1;
     }
 
-    /*std::vector<std::vector<int>> grid = {
-        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-        { 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1 },
-        { 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1 },
-        { 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1 },
-        { 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1 },
-        { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1 },
-        { 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1 },
-        { 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1 },
-        { 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1 },
-        { 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1 },
-        { 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1 },
-        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    };*/
-
     // Map map(48.0f, RESOURCES_PATH "map.png");
     Map map { 48.0f };
     map.load(RESOURCES_PATH "test.map");
+
+    if (!Resources::wallAtlas.loadFromFile(RESOURCES_PATH "raycaster_textures.png")) {
+        std::cerr << "Failed to load raycaster_textures.png\n";
+    }
 
     Player player {};
     player.position = sf::Vector2f(50, 50);

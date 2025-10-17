@@ -21,7 +21,7 @@ public:
     // void drawRays(sf::RenderTarget& target, const Player& player, const Map& map);
 
 private:
-    sf::Texture wallTexture, skyTexture;
+    sf::Texture skyTexture;
     std::unique_ptr<sf::Sprite> wallSprite; // sprite is constructed later;
     sf::Image floorImage;
 

@@ -19,4 +19,7 @@ private:
     bool isFirstMouse {};
     sf::Vector2i lastMousePos;
     sf::View view;
+
+    int textureN;
+    int setN;
 };

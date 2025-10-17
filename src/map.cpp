@@ -1,8 +1,11 @@
 #include "map.h"
+#include "resources.h"
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/Image.hpp>
+#include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
+#include <SFML/Graphics/Sprite.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <cstddef>
 #include <fstream>
@@ -41,29 +44,73 @@ Map::Map(float cellSize, const std::string& filename)
 
 void Map::draw(sf::RenderTarget& target)
 {
-    if (grid.empty()) {
+    if (grid.empty())
         return;
-    }
 
-    // sf::RectangleShape background(sf::Vector2f((float)grid[0].size() * cellSize, (float)grid.size() * cellSize));
-    // background.setFillColor(sf::Color(0, 255, 0));
-    // target.draw(background);
+    const auto& atlas = Resources::wallAtlas; // 12×5 atlas
+    const int atlasCols = 12;
+    const int atlasRows = 5;
+
+    const sf::Vector2u atlasSize = atlas.getSize();
+    const int tileWidth = atlasSize.x / atlasCols;
+    const int tileHeight = atlasSize.y / atlasRows;
+
+    int textureSize = Resources::wallAtlas.getSize().y;
+    sf::Vector2f size { cellSize * 0.95f, cellSize * 0.95f };
+    sf::Sprite sprite(atlas);
+    sprite.setScale(sf::Vector2f { size.x / tileWidth, size.y / tileHeight });
+    // sprite.setTextureRect(sf::IntRect({ 0, 0 }, { textureSize, textureSize }));
+    // sprite.setScale(size / static_cast<float>(textureSize));
 
     sf::RectangleShape cell(sf::Vector2f(cellSize * 0.95f, cellSize * 0.95f));
 
-    for (size_t y = 0; y < grid.size(); y++) {
+    /*for (size_t y = 0; y < grid.size(); y++) {
         for (size_t x = 0; x < grid.size(); x++) {
-            /*if (grid[y][x] == 0) {
-                cell.setFillColor(sf::Color(50, 57, 69));
-            } else if (grid[y][x] == 1) {
-                cell.setFillColor(sf::Color(234, 131, 165)); // 235,47,75
-            }*/
 
             // if grid[y][x] is non-zero ---> White.  if grid[y][x] is 0 ---> Black
-            cell.setFillColor(grid[y][x] ? sf::Color::White : sf::Color(70, 70, 70));
-            cell.setPosition(sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+            // cell.setFillColor(grid[y][x] ? sf::Color::White : sf::Color(70, 70, 70));
+            // cell.setPosition(sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+            if (grid[y][x] > 0) {
+                sprite.setTextureRect(sf::IntRect({ (grid[y][x] - 1) * textureSize, 0 },
+                    { textureSize, textureSize }));
+                sprite.setPosition(sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+                target.draw(sprite);
+            } else {
+                cell.setFillColor(sf::Color(70, 70, 70));
+                cell.setPosition(sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+                target.draw(cell);
+            }
+        }
+    }*/
+    for (size_t y = 0; y < grid.size(); ++y) {
+        for (size_t x = 0; x < grid[y].size(); ++x) {
+            const int id = grid[y][x];
 
-            target.draw(cell);
+            if (id > 0) {
+                int textureIndex = id - 1;
+                int tileX = textureIndex % atlasCols; // column
+                int tileY = textureIndex / atlasCols; // row
+
+                /*sf::IntRect rect(
+                    { static_cast<int>(tileX * tileWidth),
+                        static_cast<int>(tileY * tileHeight) },
+                    { static_cast<int>(tileWidth),
+                        static_cast<int>(tileHeight) });*/
+                sf::IntRect rect(
+                    { tileX * tileWidth, tileY * tileHeight },
+                    { tileWidth, tileHeight });
+                sprite.setTextureRect(rect);
+
+                sprite.setPosition(
+                    sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+
+                target.draw(sprite);
+            } else {
+                cell.setFillColor(sf::Color(70, 70, 70));
+                cell.setPosition(
+                    sf::Vector2f(x, y) * cellSize + sf::Vector2f(cellSize * 0.025f, cellSize * 0.025f));
+                target.draw(cell);
+            }
         }
     }
 }

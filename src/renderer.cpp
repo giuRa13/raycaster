@@ -4,6 +4,7 @@
 #include <SFML/Graphics/PrimitiveType.hpp>
 // #include "SFML/Graphics/Rect.hpp"
 #include "map.h"
+#include "resources.h"
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderStates.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
@@ -14,7 +15,6 @@
 #include <cmath>
 #include <cstddef>
 #include <iostream>
-// #include <limits>
 
 constexpr float PI = 3.141592653589793f;
 constexpr float PLAYER_FOV = 60.0f;
@@ -40,15 +40,7 @@ void Renderer::init()
     }
     skyTexture.setRepeated(true);
 
-    if (!wallTexture.loadFromFile(RESOURCES_PATH "wall_texture.png")) {
-        std::cerr << "Failed to load wall_texture.png\n";
-    }
-
-    if (wallTexture.getSize().x != wallTexture.getSize().y) {
-        std::cerr << "ERROR: Texture is not square\n";
-    }
-
-    if (!floorImage.loadFromFile(RESOURCES_PATH "floor_texture.png")) {
+    if (!floorImage.loadFromFile(RESOURCES_PATH "basalt_top3.png")) {
         std::cerr << "Failed to load floor_texture.png\n";
     }
 
@@ -56,7 +48,7 @@ void Renderer::init()
         std::cerr << "ERROR: Texture is not square\n";
     }
 
-    wallSprite = std::make_unique<sf::Sprite>(wallTexture);
+    wallSprite = std::make_unique<sf::Sprite>(Resources::wallAtlas);
 
     screenTexture = sf::Texture(sf::Vector2u((unsigned)SCREEN_W, (unsigned)SCREEN_H));
     screenSprite = std::make_unique<sf::Sprite>(screenTexture);
@@ -157,10 +149,11 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
     // Draw the screen sprite
     target.draw(*screenSprite);
 
-    sf::VertexArray walls { sf::PrimitiveType::Lines };
-
     // loop every column not angles (each column is one pixel)
     for (size_t i = 0; i < SCREEN_W; i++) {
+
+        sf::VertexArray walls { sf::PrimitiveType::Lines };
+
         // column in camera space (-1 to 1)
         float cameraX = i * 2.0f / SCREEN_W - 1.0f; // i = 1200 -> 1200/1200 -> 1*2 -> 2-1 -> 1
         sf::Vector2f rayPos = position;
@@ -191,9 +184,9 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
         }
 
         // DDA
-        bool didHit {}, isHitVertical {};
+        int hit {}, isHitVertical {};
         size_t depth = 0;
-        while (!didHit && depth < MAX_RAYCAST_DEPTH) {
+        while (hit == 0 && depth < MAX_RAYCAST_DEPTH) {
 
             if (sideDist.x < sideDist.y) { // Horizontal wall
                 sideDist.x += deltaDist.x;
@@ -208,17 +201,25 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             int x = mapPos.x, y = mapPos.y;
             const auto& grid = map.getGrid();
 
-            if (y >= 0 && y < (int)grid.size() && x >= 0 && x < (int)grid[y].size()) {
+            if (y >= 0 && y < grid.size() && x >= 0 && x < grid[y].size()) {
                 if (grid[y][x]) { // grid[y][x] != sf::Color::Black
-                    didHit = true;
+                    hit = grid[y][x];
                 }
             }
 
             depth++;
         }
 
+        // atlas layout
+        const int atlasCols = 12;
+        const int atlasRows = 5;
+        const auto& atlas = Resources::wallAtlas;
+        const sf::Vector2u atlasSize = atlas.getSize();
+        const float tileWidth = static_cast<float>(atlasSize.x) / atlasCols;
+        const float tileHeight = static_cast<float>(atlasSize.y) / atlasRows;
+
         // Drawing
-        if (didHit) {
+        if (hit > 0) {
             float perpWallDist = isHitVertical ? sideDist.y - deltaDist.y : sideDist.x - deltaDist.x; // perpendicular distance to avoid fisheye
             float wallHeight = SCREEN_H / perpWallDist;
 
@@ -226,11 +227,11 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             float wallEnd = (wallHeight + SCREEN_H) / 2.0f;
 
             // texture coords
-            float textureSize = wallTexture.getSize().x;
+            float textureSize = Resources::wallAtlas.getSize().y;
             float wallX = isHitVertical ? rayPos.x + perpWallDist * rayDir.x : rayPos.y + perpWallDist * rayDir.y;
             // to calculate position relative to the current wall starting position :
             wallX -= std::floor(wallX); // if hit at middle of second tile ->  wallX = 1.5 -> - 1(floor of 1.5) = 0.5
-            float textureX = wallX * textureSize;
+            float textureX = wallX * tileWidth; // float textureX = wallX * textureSize;
 
             float brightness = 1.0f - (perpWallDist / (float)MAX_RAYCAST_DEPTH);
             if (isHitVertical) {
@@ -238,14 +239,35 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
             }
             sf::Color color = sf::Color(255 * brightness, 255 * brightness, 255 * brightness);
 
-            walls.append(sf::Vertex { sf::Vector2f { (float)i, wallStart }, color, sf::Vector2f { textureX, 0.0f } });
-            walls.append(sf::Vertex { sf::Vector2f { (float)i, wallEnd }, color, sf::Vector2f { textureX, textureSize } });
+            // choose which tile (based on your map hit ID)
+            int textureIndex = hit - 1;
+            int tileX = textureIndex % atlasCols; // column
+            int tileY = textureIndex / atlasCols; // row
 
-            sf::RenderStates states { &wallTexture };
+            // compute texture coordinate offset inside atlas
+            float uOffset = tileX * tileWidth;
+            float vOffset = tileY * tileHeight;
+
+            /*walls.append(sf::Vertex {
+                sf::Vector2f((float)i, wallStart), color,
+                sf::Vector2f(textureX + (hit - 1) * textureSize, 0.0f) });
+            walls.append(sf::Vertex {
+                sf::Vector2f((float)i, wallEnd), color,
+                sf::Vector2f(textureX + (hit - 1) * textureSize, textureSize) });*/
+
+            // sf::RenderStates states { &Resources::wallTexture };
+            // target.draw(walls, states);
+            walls.append(sf::Vertex {
+                sf::Vector2f((float)i, wallStart), color,
+                sf::Vector2f(uOffset + textureX, vOffset) });
+            walls.append(sf::Vertex {
+                sf::Vector2f((float)i, wallEnd), color,
+                sf::Vector2f(uOffset + textureX, vOffset + tileHeight) });
+
+            sf::RenderStates states { &Resources::wallAtlas };
             target.draw(walls, states);
         }
     }
-
     /*for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
 
         Ray ray = castRay(player.position, angle, map);
