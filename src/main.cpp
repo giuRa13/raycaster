@@ -27,9 +27,26 @@ int main()
         return -1;
     }
 
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->Clear(); // clear default fonts
+
+    // Add default font first
+    io.Fonts->AddFontDefault();
+
+    // Configure for Font Awesome
+    ImFontConfig faConfig;
+    faConfig.MergeMode = true; // merge into existing font
+    faConfig.PixelSnapH = true;
+
+    // Load Font Awesome glyphs
+    static const ImWchar icons_ranges[] = { 0xf000, 0xf3ff, 0 }; // Font Awesome unicode range
+    io.Fonts->AddFontFromFileTTF(RESOURCES_PATH "fa-solid-900.ttf", 16.0f, &faConfig, icons_ranges);
+
+    // Rebuild the font texture
+    (void)ImGui::SFML::UpdateFontTexture();
     // Map map(48.0f, RESOURCES_PATH "map.png");
     Map map { 48.0f };
-    map.load(RESOURCES_PATH "test.map");
+    // map.load(RESOURCES_PATH "test.map");
 
     if (!Resources::wallAtlas.loadFromFile(RESOURCES_PATH "raycaster_textures.png")) {
         std::cerr << "Failed to load raycaster_textures.png\n";

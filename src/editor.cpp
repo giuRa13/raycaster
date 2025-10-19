@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "resources.h"
+#include <ImGuiFileDialog.h>
 #include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -7,9 +8,41 @@
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/Mouse.hpp>
 #include <algorithm>
-#include <cmath>
 #include <imgui-SFML.h>
 #include <imgui.h>
+
+#define ICON_IGFD_FOLDER "\uf07b" // folder in FA
+#define ICON_IGFD_FILE "\uf15b" // file in FA
+#define ICON_IGFD_FILE_IMAGE "\uf1c5" // Unicode for image file
+#define ICON_IGFD_FILE_CODE "\uf121"
+#define ICON_IGFD_FILE_TEXT "\uf15c"
+#define ICON_IGFD_FILE_AUDIO "\uf1c7" // Audio File
+#define ICON_IGFD_FILE_VIDEO "\uf1c8" // Video File
+#define ICON_IGFD_FILE_ZIP "\uf1c6" // ZIP File
+#define ICON_IGFD_FILE_MARKDOWN "\uf60f" // Markdown File
+#define ICON_IGFD_FILE_JSON "\uf1c9"
+#define ICON_IGFD_FILE_CSV "\uf1c3"
+#define ICON_IGFD_FILE_PDF "\uf1c1"
+#define ICON_IGFD_FOLDER_OPEN "\uf07c" // Open Folder
+#define ICON_IGFD_FOLDER_TREE "\uf114" // Folder Tree
+#define ICON_IGFD_FILE_ARCHIVE "\uf1c0"
+#define ICON_IGFD_FILE_FONT "\uf031"
+
+#define ICON_IGFD_OK "\uf00c" // Check (OK)
+#define ICON_IGFD_CANCEL "\uf00d" // Times / Cancel
+#define ICON_IGFD_EDIT "\uf303"
+#define ICON_IGFD_RESET "\uf045"
+#define ICON_IGFD_BACK "\uf060" // Arrow Left (Back)
+#define ICON_IGFD_FORWARD "\uf061" // Arrow Right (Forward)
+#define ICON_IGFD_UP "\uf062" // Arrow Up (Parent Dir)
+#define ICON_IGFD_REFRESH "\uf021" // Refresh
+#define ICON_IGFD_HOME "\uf015" // Home
+#define ICON_IGFD_SAVE "\uf0c7" // Save
+#define ICON_IGFD_UPLOAD "\uf093" // Upload
+#define ICON_IGFD_DOWNLOAD "\uf019" // Download
+#define ICON_IGFD_SEARCH "\uf002" // Search
+#define ICON_IGFD_INFO "\uf129" // Info Circle
+#define ICON_IGFD_WARNING "\uf071" // Exclamation Triangle
 
 void Editor::init(sf::RenderWindow& window)
 {
@@ -19,14 +52,51 @@ void Editor::init(sf::RenderWindow& window)
 
 void Editor::run(sf::RenderWindow& window, Map& map)
 {
+    auto dlg = ImGuiFileDialog::Instance();
+    dlg->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, ImVec4(1.0f, 0.85f, 0.2f, 0.9f), ICON_IGFD_FOLDER);
+    dlg->SetFileStyle(IGFD_FileStyleByTypeFile, "", ImVec4(0.3f, 0.6f, 1.0f, 0.9f), ICON_IGFD_FILE);
+    dlg->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.3f, 0.8f, 0.6f, 0.9f), ICON_IGFD_FILE_IMAGE);
+    dlg->SetFileStyle(IGFD_FileStyleByExtention, ".cpp,.hpp,.c,.h", ImVec4(0.3f, 0.8f, 0.6f, 0.9f), ICON_IGFD_FILE_CODE);
+    dlg->SetFileStyle(IGFD_FileStyleByExtention, ".ttf", ImVec4(1.0f, 0.3f, 0.3f, 0.9f), ICON_IGFD_FILE_FONT);
+    dlg->SetFileStyle(IGFD_FileStyleByExtention, ".map", ImVec4(0.7f, 0.4f, 1.0f, 0.9f), ICON_IGFD_FILE);
+    dlg->SetFileStyle(IGFD_FileStyleByContainedInFullName, "CMakeLists", ImVec4(1.0f, 0.4f, 0.8f, 0.9f), ICON_IGFD_FILE);
+    dlg->SetFileStyle(IGFD_FileStyleByExtention, ".txt", ImVec4(0.8f, 0.8f, 0.8f, 0.9f), ICON_IGFD_FILE_TEXT);
+
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+
+            if (ImGui::MenuItem("Open")) {
+                dlg->OpenDialog("OpenDialog", "Chose Map", ".*");
+            }
             if (ImGui::MenuItem("Save")) {
-                map.save(RESOURCES_PATH "test.map");
+                if (savedFileName.empty()) {
+                    dlg->OpenDialog("SaveDialog", "Save Map", ".*");
+                } else {
+                    map.save(savedFileName);
+                }
+            }
+            if (ImGui::MenuItem("Save As")) {
+                dlg->OpenDialog("SaveDialog", "Save Map As", ".*");
             }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
+
+        if (dlg->Display("OpenDialog")) {
+            if (dlg->IsOk()) {
+                savedFileName = dlg->GetFilePathName();
+                map.load(savedFileName);
+            }
+            dlg->Close();
+        }
+
+        if (dlg->Display("SaveDialog")) {
+            if (dlg->IsOk()) {
+                savedFileName = dlg->GetFilePathName();
+                map.save(savedFileName);
+            }
+            dlg->Close();
+        }
     }
 
     ImGui::Begin("Editing Options");
