@@ -46,6 +46,8 @@
 
 void Editor::init(sf::RenderWindow& window)
 {
+    currentLayer = Map::LAYER_WALLS;
+
     view = window.getView();
     cell.setFillColor(sf::Color::Green);
 }
@@ -100,6 +102,18 @@ void Editor::run(sf::RenderWindow& window, Map& map)
     }
 
     ImGui::Begin("Editing Options");
+    ImGui::Text("Layer: ");
+    if (ImGui::BeginCombo("##layers", Map::LAYER_NAMES[currentLayer])) {
+
+        for (size_t i = 0; i < Map::NUM_LAYERS; i++) {
+            if (ImGui::Selectable(Map::LAYER_NAMES[i], currentLayer == i)) {
+                currentLayer = i;
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
     ImGui::Text("Set N° ");
     ImGui::SameLine();
     ImGui::InputInt("##set_n", &setN);
@@ -108,21 +122,11 @@ void Editor::run(sf::RenderWindow& window, Map& map)
     ImGui::InputInt("##tex_n", &textureN);
 
     ImGui::Text("Preview: ");
-    // ImGui::Image(
-    // sf::SpriteShape {
-    // Resources::wallTexture,
-    // sf::IntRect(textureN * textureSize, 0, textureSize, textureSize) },
-    // sf::Vector2f(100.f, 100.f));
-    /*int textureSize = Resources::wallTexture.getSize().y;
-    ImGui::Image(
-        reinterpret_cast<ImTextureID>(Resources::wallTexture.getNativeHandle()),
-        ImVec2(100.f, 100.f),
-        ImVec2((textureN * textureSize) / static_cast<float>(Resources::wallTexture.getSize().x), 0.f),
-        ImVec2((textureN + 1) * textureSize / static_cast<float>(Resources::wallTexture.getSize().x), 1.f));*/
+
     setN = std::clamp(setN, 0, 4);
     textureN = std::clamp(textureN, 0, 11);
 
-    const auto& texture = Resources::wallAtlas; // <-- your 12x12 combined texture
+    const auto& texture = Resources::texturesAtlas; // <-- your 12x12 combined texture
     const int cols = 12;
     const int rows = 5;
     const sf::Vector2u texSize = texture.getSize();
@@ -140,6 +144,15 @@ void Editor::run(sf::RenderWindow& window, Map& map)
         reinterpret_cast<ImTextureID>(texture.getNativeHandle()),
         ImVec2(100.f, 100.f),
         uv0, uv1);
+
+    if (ImGui::Button("Fill")) {
+        map.fill(currentLayer, setN * 12 + textureN + 1);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear")) {
+        map.fill(currentLayer, 0);
+    }
+
     ImGui::End();
 
     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
@@ -175,10 +188,11 @@ void Editor::run(sf::RenderWindow& window, Map& map)
             int id = setN * 12 + textureN + 1; // atlasCols = 12
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::N))
                 id = 0; // erase
-            map.setMapCell(mapPos.x, mapPos.y, id);
+            map.setMapCell(mapPos.x, mapPos.y, currentLayer, id);
         }
     }
 
+    map.draw(window, currentLayer, currentLayer);
     window.setView(view);
 }
 

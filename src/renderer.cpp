@@ -40,15 +40,7 @@ void Renderer::init()
     }
     skyTexture.setRepeated(true);
 
-    if (!floorImage.loadFromFile(RESOURCES_PATH "basalt_top3.png")) {
-        std::cerr << "Failed to load floor_texture.png\n";
-    }
-
-    if (floorImage.getSize().x != floorImage.getSize().y) {
-        std::cerr << "ERROR: Texture is not square\n";
-    }
-
-    wallSprite = std::make_unique<sf::Sprite>(Resources::wallAtlas);
+    // wallSprite = std::make_unique<sf::Sprite>(Resources::texturesAtlas);
 
     screenTexture = sf::Texture(sf::Vector2u((unsigned)SCREEN_W, (unsigned)SCREEN_H));
     screenSprite = std::make_unique<sf::Sprite>(screenTexture);
@@ -59,99 +51,120 @@ void Renderer::init()
 
 void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const Map& map)
 {
-    // sf::Image image(sf::Vector2u(SCREEN_W, SCREEN_H), sf::Color(0, 0, 0, 0)); // alpha transparent avoid hide sky
-    //  Clear lower half (floor area)
+    // Clear screen pixel buffer
     std::fill(screenPixels.begin(), screenPixels.end(), 0);
 
-    // sf::RectangleShape rectangle(sf::Vector2f(SCREEN_W, SCREEN_H / 2.0f));
-    // rectangle.setFillColor(sf::Color(100, 170, 250));
-    // target.draw(rectangle);
-
-    // rectangle.setPosition(sf::Vector2f { 0.0f, SCREEN_H / 2.0f });
-    // rectangle.setFillColor(sf::Color(70, 70, 70));
-    // target.draw(rectangle);
-
-    // const sf::Color fogColor = sf::Color(100, 170, 250);
     const sf::Color fogColor = sf::Color(20, 20, 20);
-    // const float maxRenderDistance = MAX_RAYCAST_DEPTH * map.getCellSize();
-    // const float maxFogDistance = maxRenderDistance / 4.0f;
 
-    // float angle = player.angle - PLAYER_FOV / 2.0f;
-    // float angleIncrement = PLAYER_FOV / (float)NUM_RAYS;
-
-    // sf::RectangleShape column { sf::Vector2f { 1.0f, 1.0f } };
-
+    // Player direction and camera plane
     float radians = player.angle * PI / 180.0f;
     sf::Vector2f direction { std::cos(radians), std::sin(radians) }; // convert radians to a direction vector
     sf::Vector2f plane { -direction.y, direction.x * 0.66f }; // camera plane (perpendicular to the direction) (horizontal line in front of player and each screen column(y) is a point on it)
     sf::Vector2f position = player.position / map.getCellSize();
 
-    // sky texture
-    /*int xOffset = (int)(player.angle * (skyTexture.getSize().x / 360.f)); // sroll sky texture
-    xOffset %= (int)skyTexture.getSize().x;
-    if (xOffset < 0)
-        xOffset += skyTexture.getSize().x;*/
+    // Sky texture
     int xOffset = SCREEN_W / PLAYER_TURN_SPEED * player.angle;
-    while (xOffset < 0) {
+    while (xOffset < 0)
         xOffset += skyTexture.getSize().x;
-    }
 
     sf::Vertex sky[] = {
-        // first triangle
-        sf::Vertex { sf::Vector2f { 0.f, 0.f }, sf::Color::White, sf::Vector2f { (float)xOffset, 0.f } },
-        sf::Vertex { sf::Vector2f { 0.f, SCREEN_H / 2.f }, sf::Color::White, sf::Vector2f { (float)xOffset, (float)skyTexture.getSize().y } },
-        sf::Vertex { sf::Vector2f { SCREEN_W, SCREEN_H / 2.f }, sf::Color::White, { (float)xOffset + (float)skyTexture.getSize().x, (float)skyTexture.getSize().y } },
-        // second triangle
-        sf::Vertex { sf::Vector2f { 0.f, 0.f }, sf::Color::White, sf::Vector2f { (float)xOffset, 0.f } },
-        sf::Vertex { sf::Vector2f { SCREEN_W, SCREEN_H / 2.f }, sf::Color::White, sf::Vector2f { (float)xOffset + (float)skyTexture.getSize().x, (float)skyTexture.getSize().y } },
-        sf::Vertex { sf::Vector2f { SCREEN_W, 0.f }, sf::Color::White, sf::Vector2f { (float)xOffset + (float)skyTexture.getSize().x, 0.f } },
+        sf::Vertex { { 0.f, 0.f }, sf::Color::White, { (float)xOffset, 0.f } },
+        sf::Vertex { { 0.f, SCREEN_H / 2.f }, sf::Color::White, { (float)xOffset, (float)skyTexture.getSize().y } },
+        sf::Vertex { { SCREEN_W, SCREEN_H / 2.f }, sf::Color::White, { (float)xOffset + (float)skyTexture.getSize().x, (float)skyTexture.getSize().y } },
+
+        sf::Vertex { { 0.f, 0.f }, sf::Color::White, { (float)xOffset, 0.f } },
+        sf::Vertex { { SCREEN_W, SCREEN_H / 2.f }, sf::Color::White, { (float)xOffset + (float)skyTexture.getSize().x, (float)skyTexture.getSize().y } },
+        sf::Vertex { { SCREEN_W, 0.f }, sf::Color::White, { (float)xOffset + (float)skyTexture.getSize().x, 0.f } },
     };
     target.draw(sky, 6, sf::PrimitiveType::Triangles, sf::RenderStates(&skyTexture));
 
-    // floor textures
-    const auto floorSize = floorImage.getSize().x;
-    for (size_t y = (int)SCREEN_H / 2 + 1; y < SCREEN_H; y++) { // FLOOR: start from the first row *below* the horizon to avoid division by zero
-        sf::Vector2f rayDirLeft { direction - plane }, rayDirRight { direction + plane };
-        float denom = (float)y - (SCREEN_H / 2.0f);
+    // Floor and Ceiling Rendering
+    for (size_t y = SCREEN_H / 2 + 1; y < SCREEN_H; y++) { // FLOOR: start from the first row *below* the horizon down to bottom screen
+        sf::Vector2f rayDirLeft = direction - plane;
+        sf::Vector2f rayDirRight = direction + plane;
+
+        float denom = static_cast<float>(y) - SCREEN_H / 2.0f; // vertical offset from the horizon
         if (denom == 0.0f)
             continue;
         float rowDistance = CAMERA_Z / denom; // distance from Camera to Floor (at current row)
-                                              //
-        sf::Vector2f floorStep = rowDistance * (rayDirRight - rayDirLeft) / (float)SCREEN_W;
+
+        sf::Vector2f floorStep = rowDistance * (rayDirRight - rayDirLeft) / static_cast<float>(SCREEN_W);
         sf::Vector2f floorPos = position + rowDistance * rayDirLeft;
 
+        // Atlas layout
+        const int atlasCols = 12;
+        const int atlasRows = 5;
+        const auto& texImg = Resources::texturesImage;
+        const sf::Vector2u texSize = texImg.getSize();
+        const unsigned tileWidth = texSize.x / atlasCols;
+        const unsigned tileHeight = texSize.y / atlasRows;
+
         for (size_t x = 0; x < SCREEN_W; x++) {
-            sf::Vector2i cell { (int)std::floor(floorPos.x), (int)std::floor(floorPos.y) };
+            int fx = static_cast<int>(floorPos.x);
+            int fy = static_cast<int>(floorPos.y);
 
-            float textureSize = floorImage.getSize().x;
-            sf::Vector2i texCoords { (int)(textureSize * (floorPos.x - (float)cell.x)), (int)(textureSize * (floorPos.y - (float)cell.y)) };
-            texCoords.x &= (int)textureSize - 1;
-            texCoords.y &= (int)textureSize - 1;
+            int floorTex = map.getMapCell(fx, fy, Map::LAYER_FLOOR);
+            int ceilTex = map.getMapCell(fx, fy, Map::LAYER_CEILING);
 
-            sf::Color c = floorImage.getPixel((sf::Vector2u)texCoords);
-            size_t idx = (x + y * (size_t)SCREEN_W) * 4;
-            screenPixels[idx + 0] = c.r;
-            screenPixels[idx + 1] = c.g;
-            screenPixels[idx + 2] = c.b;
-            screenPixels[idx + 3] = 255;
+            sf::Color floorColor(70, 70, 70, 255);
+            sf::Color ceilingColor(0, 0, 0, 0);
+
+            float fracX = floorPos.x - std::floor(floorPos.x); // if floorPos.x = 2.25 --> std::floor = 2 --> fracX = 0.25 (you are 25% inside tile #2 along the x-axis)
+            float fracY = floorPos.y - std::floor(floorPos.y);
+            // Convert fractional position into texture pixel coordinates
+            unsigned tx = static_cast<unsigned>(fracX * tileWidth);
+            unsigned ty = static_cast<unsigned>(fracY * tileHeight);
+
+            // Floor sampling
+            if (floorTex > 0) {
+                unsigned tileIndex = static_cast<unsigned>(floorTex - 1);
+                unsigned tileX = tileIndex % atlasCols; // get columns number ( 12 % 12 = 0 , column 0 )
+                unsigned tileY = tileIndex / atlasCols;
+                unsigned px = tileX * tileWidth + tx;
+                unsigned py = tileY * tileHeight + ty;
+                if (px < texSize.x && py < texSize.y)
+                    floorColor = texImg.getPixel({ px, py });
+            }
+
+            // Ceiling sampling
+            if (ceilTex > 0) {
+                unsigned tileIndex = static_cast<unsigned>(ceilTex - 1);
+                unsigned tileX = tileIndex % atlasCols;
+                unsigned tileY = tileIndex / atlasCols;
+                unsigned px = tileX * tileWidth + tx;
+                unsigned py = tileY * tileHeight + ty;
+                if (px < texSize.x && py < texSize.y)
+                    ceilingColor = texImg.getPixel({ px, py });
+            }
+
+            // Write to screen buffer
+            // Pixel 0 → [R0, G0, B0, A0]
+            // Pixel 1 → [R1, G1, B1, A1]
+            // Pixel 2 → [R2, G2, B2, A2]
+            // because sf::Texture::update() expects a contiguous RGBA array, like: [R0, G0, B0, A0,  R1, G1, B1, A1,  R2, G2, B2, A2,  ...]
+            size_t floorIdx = (x + y * (size_t)SCREEN_W) * 4; // Start of the pixel in the floor area.  ( 4 --> RGBA)
+            size_t ceilIdx = (x + ((size_t)SCREEN_H - y - 1) * (size_t)SCREEN_W) * 4; // (SCREEN_H - y - 1) mirror the y-coord vertically
+
+            screenPixels[floorIdx + 0] = floorColor.r;
+            screenPixels[floorIdx + 1] = floorColor.g;
+            screenPixels[floorIdx + 2] = floorColor.b;
+            screenPixels[floorIdx + 3] = floorColor.a;
+
+            screenPixels[ceilIdx + 0] = ceilingColor.r;
+            screenPixels[ceilIdx + 1] = ceilingColor.g;
+            screenPixels[ceilIdx + 2] = ceilingColor.b;
+            screenPixels[ceilIdx + 3] = ceilingColor.a;
+
             floorPos += floorStep;
         }
     }
 
-    // Sky
-    /*for (size_t y = 0; y < SCREEN_H / 2; ++y) {
-        for (size_t x = 0; x < SCREEN_W; ++x)
-            image.setPixel({ (unsigned)x, (unsigned)y }, sf::Color(100, 170, 250));
-    }*/
-
-    // Update the persistent screen sprite with the new image
+    // Update screen texture
     screenTexture.update(screenPixels.data());
-    // Draw the screen sprite
     target.draw(*screenSprite);
 
-    // loop every column not angles (each column is one pixel)
+    // Wall Rendering
     for (size_t i = 0; i < SCREEN_W; i++) {
-
         sf::VertexArray walls { sf::PrimitiveType::Lines };
 
         // column in camera space (-1 to 1)
@@ -161,24 +174,22 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
 
         // in DDA only move the amount needed to get to the next side of the wall ( from one X/Y side to the next X/Y side)
         // no need the correct lenght, in DDA only ratio (between X and Y) matters
-        sf::Vector2f deltaDist { std::abs(1.0f / rayDir.x), std::abs(1.0f / rayDir.y) }; // (is the distance the ray must travel (in world units) along the ray to move exactly 1 cell in the X direction)
-
+        sf::Vector2f deltaDist { std::abs(1.0f / rayDir.x), std::abs(1.0f / rayDir.y) };
         sf::Vector2i mapPos { rayPos }; // truncate floating point (get Integer)
         sf::Vector2i step;
         sf::Vector2f sideDist; // make shure we start at a right value X/Y side (initial distance might not be at the wall)
 
-        if (rayDir.x < 0.0f) { // left
+        if (rayDir.x < 0.0f) {
             step.x = -1;
             sideDist.x = (-mapPos.x + rayPos.x) * deltaDist.x; // perpendicular distance * delta = actual distance
-        } else { // right
+        } else {
             step.x = 1;
             sideDist.x = (mapPos.x - rayPos.x + 1.0f) * deltaDist.x;
         }
-
-        if (rayDir.y < 0.0f) { // down
+        if (rayDir.y < 0.0f) {
             step.y = -1;
             sideDist.y = (-mapPos.y + rayPos.y) * deltaDist.y;
-        } else { // up
+        } else {
             step.y = 1;
             sideDist.y = (mapPos.y - rayPos.y + 1.0f) * deltaDist.y;
         }
@@ -187,8 +198,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
         int hit {}, isHitVertical {};
         size_t depth = 0;
         while (hit == 0 && depth < MAX_RAYCAST_DEPTH) {
-
-            if (sideDist.x < sideDist.y) { // Horizontal wall
+            if (sideDist.x < sideDist.y) {
                 sideDist.x += deltaDist.x;
                 mapPos.x += step.x;
                 isHitVertical = false;
@@ -197,131 +207,49 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
                 mapPos.y += step.y;
                 isHitVertical = true;
             }
-
-            int x = mapPos.x, y = mapPos.y;
-            const auto& grid = map.getGrid();
-
-            if (y >= 0 && y < grid.size() && x >= 0 && x < grid[y].size()) {
-                if (grid[y][x]) { // grid[y][x] != sf::Color::Black
-                    hit = grid[y][x];
-                }
-            }
-
+            hit = map.getMapCell(mapPos.x, mapPos.y, Map::LAYER_WALLS);
             depth++;
         }
 
-        // atlas layout
         const int atlasCols = 12;
         const int atlasRows = 5;
-        const auto& atlas = Resources::wallAtlas;
+        const auto& atlas = Resources::texturesAtlas;
         const sf::Vector2u atlasSize = atlas.getSize();
         const float tileWidth = static_cast<float>(atlasSize.x) / atlasCols;
         const float tileHeight = static_cast<float>(atlasSize.y) / atlasRows;
 
-        // Drawing
         if (hit > 0) {
-            float perpWallDist = isHitVertical ? sideDist.y - deltaDist.y : sideDist.x - deltaDist.x; // perpendicular distance to avoid fisheye
+            float perpWallDist = isHitVertical ? sideDist.y - deltaDist.y : sideDist.x - deltaDist.x;
             float wallHeight = SCREEN_H / perpWallDist;
-
             float wallStart = (-wallHeight + SCREEN_H) / 2.0f;
             float wallEnd = (wallHeight + SCREEN_H) / 2.0f;
 
-            // texture coords
-            float textureSize = Resources::wallAtlas.getSize().y;
             float wallX = isHitVertical ? rayPos.x + perpWallDist * rayDir.x : rayPos.y + perpWallDist * rayDir.y;
             // to calculate position relative to the current wall starting position :
             wallX -= std::floor(wallX); // if hit at middle of second tile ->  wallX = 1.5 -> - 1(floor of 1.5) = 0.5
             float textureX = wallX * tileWidth; // float textureX = wallX * textureSize;
 
-            float brightness = 1.0f - (perpWallDist / (float)MAX_RAYCAST_DEPTH);
-            if (isHitVertical) {
+            float brightness = 1.0f - (perpWallDist / static_cast<float>(MAX_RAYCAST_DEPTH));
+            if (isHitVertical)
                 brightness *= 0.7f;
-            }
             sf::Color color = sf::Color(255 * brightness, 255 * brightness, 255 * brightness);
 
             // choose which tile (based on your map hit ID)
             int textureIndex = hit - 1;
-            int tileX = textureIndex % atlasCols; // column
-            int tileY = textureIndex / atlasCols; // row
+            int tileX = textureIndex % atlasCols;
+            int tileY = textureIndex / atlasCols;
 
-            // compute texture coordinate offset inside atlas
             float uOffset = tileX * tileWidth;
             float vOffset = tileY * tileHeight;
 
-            /*walls.append(sf::Vertex {
-                sf::Vector2f((float)i, wallStart), color,
-                sf::Vector2f(textureX + (hit - 1) * textureSize, 0.0f) });
-            walls.append(sf::Vertex {
-                sf::Vector2f((float)i, wallEnd), color,
-                sf::Vector2f(textureX + (hit - 1) * textureSize, textureSize) });*/
+            walls.append(sf::Vertex { { (float)i, wallStart }, color, { uOffset + textureX, vOffset } });
+            walls.append(sf::Vertex { { (float)i, wallEnd }, color, { uOffset + textureX, vOffset + tileHeight } });
 
-            // sf::RenderStates states { &Resources::wallTexture };
-            // target.draw(walls, states);
-            walls.append(sf::Vertex {
-                sf::Vector2f((float)i, wallStart), color,
-                sf::Vector2f(uOffset + textureX, vOffset) });
-            walls.append(sf::Vertex {
-                sf::Vector2f((float)i, wallEnd), color,
-                sf::Vector2f(uOffset + textureX, vOffset + tileHeight) });
-
-            sf::RenderStates states { &Resources::wallAtlas };
+            sf::RenderStates states { &Resources::texturesAtlas };
             target.draw(walls, states);
         }
     }
-    /*for (size_t i = 0; i < NUM_RAYS; i++, angle += angleIncrement) {
-
-        Ray ray = castRay(player.position, angle, map);
-
-        if (ray.hit) {
-            // take the Perpendicular not the Ipotenusa to avoil fisheye
-            ray.distance *= std::cos((player.angle - angle) * PI / 180.0f);
-
-            float wallHeight = (map.getCellSize() * SCREEN_H) / ray.distance;
-            float wallOffset = SCREEN_H / 2.0f - wallHeight / 2.0f; // ( center in screen )
-
-            // map texture
-            float textureX;
-            if (ray.isHitVertical) {
-                textureX = ray.hitPosition.y - wallTexture.getSize().x * std::floor(ray.hitPosition.y / wallTexture.getSize().x);
-            } else {
-                textureX = wallTexture.getSize().x * std::ceil(ray.hitPosition.x / wallTexture.getSize().x) - ray.hitPosition.x;
-            }
-
-            wallSprite->setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
-            wallSprite->setTextureRect(sf::IntRect(
-                { (int)textureX, 0 },
-                { (int)wallTexture.getSize().x / (int)map.getCellSize(), (int)wallTexture.getSize().y }));
-            wallSprite->setScale(sf::Vector2f {
-                COLUMN_WIDTH, wallHeight / wallTexture.getSize().y });
-
-            if (wallHeight > SCREEN_H) {
-                wallHeight = SCREEN_H;
-            }
-
-            float brightness = 1.0f - (ray.distance / maxRenderDistance);
-            if (brightness < 0.0f) {
-                brightness = 0.0f;
-            }
-
-            float shade = (ray.isHitVertical ? 0.8f : 1.0f) * brightness;
-
-            float fogPercentage = (ray.distance / maxFogfDistance);
-            if (fogPercentage > 1.0f) {
-                fogPercentage = 1.0f;
-            }
-
-            // fog effect
-            column.setPosition(sf::Vector2f { i * COLUMN_WIDTH, wallOffset });
-            column.setScale(sf::Vector2f { COLUMN_WIDTH, wallHeight });
-            column.setFillColor(sf::Color(fogColor.r, fogColor.g, fogColor.b, fogPercentage * 255));
-
-            wallSprite->setColor(sf::Color(255 * shade, 255 * shade, 255 * shade));
-            target.draw(*wallSprite);
-            target.draw(column);
-        }
-    }*/
 }
-
 /*void Renderer::drawRays(sf::RenderTarget& target, const Player& player, const Map& map)
 {
     for (float angle = player.angle - PLAYER_FOV / 2.0f; angle < player.angle + PLAYER_FOV; angle += 1.0f) {

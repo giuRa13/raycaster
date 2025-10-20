@@ -24,4 +24,6 @@ private:
 
     int textureN;
     int setN;
+
+    int currentLayer;
 };

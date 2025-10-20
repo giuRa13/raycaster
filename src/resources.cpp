@@ -1,6 +1,6 @@
 #include "resources.h"
 
-sf::Texture Resources::wallTexture {};
-sf::Texture Resources::wallTexture2 {};
+// sf::Texture Resources::wallTexture {};
 
-sf::Texture Resources::wallAtlas {};
+sf::Image Resources::texturesImage {};
+sf::Texture Resources::texturesAtlas {};
