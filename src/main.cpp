@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-int main()
+int main(int argc, const char** argv)
 {
     // sf::RenderWindow window { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
     auto window = sf::RenderWindow { sf::VideoMode { { (int)SCREEN_W, (int)SCREEN_H } }, "Raycaster", sf::Style::Close | sf::Style::Titlebar };
@@ -41,9 +41,6 @@ int main()
     // Rebuild the font texture
     (void)ImGui::SFML::UpdateFontTexture();
 
-    Map map { 48.0f };
-    // map.load(RESOURCES_PATH "test.map");
-
     if (!Resources::texturesImage.loadFromFile(RESOURCES_PATH "raycaster_textures.png")) {
         std::cerr << "Failed to load raycaster_textures.png\n";
     }
@@ -57,6 +54,14 @@ int main()
 
     Editor editor {};
     editor.init(window);
+
+    Map map { 48.0f };
+    if (argc > 1) {
+        editor.savedFileName = argv[1];
+    } else {
+        editor.savedFileName = "../resources/test2.map";
+    }
+    map.load(editor.savedFileName);
 
     enum class State {
         Editor,
@@ -89,10 +94,6 @@ int main()
         ImGui::SFML::Update(window, gameClock.restart());
 
         ImGui::ShowDemoWindow();
-
-        ImGui::Begin("Hello, world!");
-        ImGui::Button("button");
-        ImGui::End();
 
         window.clear();
 

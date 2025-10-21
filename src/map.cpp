@@ -204,6 +204,18 @@ void Map::fill(int layer, int value)
     }
 }
 
+void Map::resize(size_t width, size_t height)
+{
+    grid.resize(height);
+    for (auto& column : grid) {
+        column.resize(width);
+    }
+}
+
 // const std::vector<std::vector<int>>& Map::getGrid() const { return grid; }
 
 float Map::getCellSize() const { return cellSize; }
+
+size_t Map::getWidth() { return grid[0].size(); }
+
+size_t Map::getHeight() { return grid.size(); }

@@ -49,7 +49,7 @@ void Editor::init(sf::RenderWindow& window)
     currentLayer = Map::LAYER_WALLS;
 
     view = window.getView();
-    cell.setFillColor(sf::Color::Green);
+    cell.setFillColor(sf::Color(0, 255, 0, 100));
 }
 
 void Editor::run(sf::RenderWindow& window, Map& map)
@@ -101,8 +101,10 @@ void Editor::run(sf::RenderWindow& window, Map& map)
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////
     ImGui::Begin("Editing Options");
     ImGui::Text("Layer: ");
+    ImGui::SameLine();
     if (ImGui::BeginCombo("##layers", Map::LAYER_NAMES[currentLayer])) {
 
         for (size_t i = 0; i < Map::NUM_LAYERS; i++) {
@@ -115,10 +117,8 @@ void Editor::run(sf::RenderWindow& window, Map& map)
     }
 
     ImGui::Text("Set N° ");
-    ImGui::SameLine();
     ImGui::InputInt("##set_n", &setN);
     ImGui::Text("Texture N° ");
-    ImGui::SameLine();
     ImGui::InputInt("##tex_n", &textureN);
 
     ImGui::Text("Preview: ");
@@ -153,7 +153,35 @@ void Editor::run(sf::RenderWindow& window, Map& map)
         map.fill(currentLayer, 0);
     }
 
+    static int newSize[2];
+    if (ImGui::Button("Resize")) {
+        newSize[0] = map.getWidth();
+        newSize[1] = map.getHeight();
+        ImGui::OpenPopup("Resize");
+    }
+
+    if (ImGui::BeginPopupModal("Resize")) {
+
+        ImGui::Text("New Size: ");
+        ImGui::InputInt2("##newSize", newSize);
+        // dont go negative
+        newSize[0] = std::max(0, newSize[0]);
+        newSize[1] = std::max(0, newSize[1]);
+
+        if (ImGui::Button("Ok")) {
+            map.resize(newSize[0], newSize[1]);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
+    //////////////////////////////////////////////////////////////////////////////////////////////
 
     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
@@ -178,7 +206,7 @@ void Editor::run(sf::RenderWindow& window, Map& map)
         sf::Vector2i mapPos = (sf::Vector2i)(worldPos / map.getCellSize());
         cell.setSize(sf::Vector2f(map.getCellSize(), map.getCellSize()));
         cell.setPosition((sf::Vector2f)mapPos * map.getCellSize());
-        window.draw(cell);
+        // window.draw(cell);
 
         /*if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
             map.setMapCell(mapPos.x, mapPos.y,
@@ -193,6 +221,7 @@ void Editor::run(sf::RenderWindow& window, Map& map)
     }
 
     map.draw(window, currentLayer, currentLayer);
+    window.draw(cell);
     window.setView(view);
 }
 

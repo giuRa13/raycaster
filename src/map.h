@@ -29,9 +29,12 @@ public:
 
     void setMapCell(int x, int y, int layer, int value);
     void fill(int layer, int value);
+    void resize(size_t width, size_t height);
 
     float getCellSize() const;
     int getMapCell(int x, int y, int layer) const;
+    size_t getWidth();
+    size_t getHeight();
 
 private:
     std::vector<std::vector<std::array<int, NUM_LAYERS>>> grid;

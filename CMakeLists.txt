@@ -53,6 +53,21 @@ target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="${CMAK
 target_compile_features("${CMAKE_PROJECT_NAME}" PRIVATE cxx_std_17)
 target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE SFML::Graphics ImGui-SFML::ImGui-SFML)
 
+# for make run command
+# Default run arguments (can be override from command line)
+#set(RUN_ARGS "../resources/test2.map" CACHE STRING "Arguments to pass when running the program") 
+
+# Allow overriding from command line: make run RUN_ARGS="../other.map"
+#if(NOT DEFINED RUN_ARGS)
+    #set(RUN_ARGS ${DEFAULT_RUN_ARGS})
+    #endif()
+
+#add_custom_target(run
+    #COMMENT "Building and running ${PROJECT_NAME}..."
+    #DEPENDS ${PROJECT_NAME}
+    #COMMAND ${CMAKE_COMMAND} -E echo "Running ${PROJECT_NAME} with args: ${RUN_ARGS}"
+    #COMMAND ${CMAKE_COMMAND} -E chdir $<TARGET_FILE_DIR:${PROJECT_NAME}> $<TARGET_FILE:${PROJECT_NAME}> ${RUN_ARGS}
+    #)
 
 # Automatically copy compile_commands.json to the project root after generation
 #set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
