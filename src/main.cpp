@@ -6,6 +6,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
+#include <SFML/System/Time.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/Keyboard.hpp>
@@ -47,7 +48,7 @@ int main(int argc, const char** argv)
     Resources::texturesAtlas.loadFromImage(Resources::texturesImage);
 
     Player player {};
-    player.position = sf::Vector2f(50, 50);
+    player.position = sf::Vector2f(1.2f, 1.2f);
 
     Renderer renderer {};
     renderer.init();
@@ -55,7 +56,7 @@ int main(int argc, const char** argv)
     Editor editor {};
     editor.init(window);
 
-    Map map { 48.0f };
+    Map map {};
     if (argc > 1) {
         editor.savedFileName = argv[1];
     } else {
@@ -91,7 +92,7 @@ int main(int argc, const char** argv)
             }
         }
 
-        ImGui::SFML::Update(window, gameClock.restart());
+        ImGui::SFML::Update(window, sf::seconds(deltaTime));
 
         ImGui::ShowDemoWindow();
 
@@ -99,7 +100,7 @@ int main(int argc, const char** argv)
 
         if (state == State::Game) {
             window.setView(window.getDefaultView());
-            player.update(deltaTime);
+            player.update(deltaTime, map);
             renderer.draw3dView(window, player, map);
         } else {
             editor.run(window, map);

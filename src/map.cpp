@@ -15,37 +15,11 @@
 #include <iostream>
 #include <vector>
 
-Map::Map(float cellsize)
-    : cellSize(cellsize)
-    , grid()
-{
-}
+size_t Map::getWidth() { return grid[0].size(); }
 
-/*Map::Map(float cellsize, int width, int height)
-    : cellSize(cellsize)
-    , grid(height, std::vector(width, 0))
-{
-}
+size_t Map::getHeight() { return grid.size(); }
 
-Map::Map(float cellSize, const std::string& filename)
-    : cellSize(cellSize)
-{
-    sf::Image image;
-    if (!image.loadFromFile(filename)) {
-        std::cerr << "Failed to load map image\n";
-        return;
-    }
-
-    grid = std::vector(image.getSize().y, std::vector(image.getSize().x, 0));
-
-    for (size_t y = 0; y < image.getSize().y; y++) {
-        for (size_t x = 0; x < image.getSize().x; x++) {
-            grid[y][x] = image.getPixel(sf::Vector2u(x, y)) == sf::Color::Black ? 0 : 1; // getPixel() returns color of pixel at given coord
-        }
-    }
-}*/
-
-void Map::draw(sf::RenderTarget& target, int layer, int activeLayer) const
+void Map::draw(sf::RenderTarget& target, float cellSize, int layer, int activeLayer) const
 {
     if (grid.empty())
         return;
@@ -211,11 +185,3 @@ void Map::resize(size_t width, size_t height)
         column.resize(width);
     }
 }
-
-// const std::vector<std::vector<int>>& Map::getGrid() const { return grid; }
-
-float Map::getCellSize() const { return cellSize; }
-
-size_t Map::getWidth() { return grid[0].size(); }
-
-size_t Map::getHeight() { return grid.size(); }

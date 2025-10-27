@@ -2,7 +2,6 @@
 
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <filesystem>
-#include <string>
 #include <vector>
 
 class Map {
@@ -19,11 +18,9 @@ public:
         "Ceiling",
     };
 
-    Map(float cellSize);
-    // Map(float cellSize, int width, int height);
-    // Map(float cellSize, const std::string& filename);
+    Map() = default;
 
-    void draw(sf::RenderTarget& target, int layer, int activeLayer) const;
+    void draw(sf::RenderTarget& target, float cellSize, int layer, int activeLayer) const;
     void load(const std::filesystem::path& path);
     void save(const std::filesystem::path& path) const;
 
@@ -31,7 +28,6 @@ public:
     void fill(int layer, int value);
     void resize(size_t width, size_t height);
 
-    float getCellSize() const;
     int getMapCell(int x, int y, int layer) const;
     size_t getWidth();
     size_t getHeight();

@@ -60,7 +60,7 @@ void Renderer::draw3dView(sf::RenderTarget& target, const Player& player, const 
     float radians = player.angle * PI / 180.0f;
     sf::Vector2f direction { std::cos(radians), std::sin(radians) }; // convert radians to a direction vector
     sf::Vector2f plane { -direction.y, direction.x * 0.66f }; // camera plane (perpendicular to the direction) (horizontal line in front of player and each screen column(y) is a point on it)
-    sf::Vector2f position = player.position / map.getCellSize();
+    sf::Vector2f position = player.position;
 
     // Sky texture
     int xOffset = SCREEN_W / PLAYER_TURN_SPEED * player.angle;

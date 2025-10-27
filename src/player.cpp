@@ -10,7 +10,8 @@
 
 constexpr float PI = 3.141592653589793f;
 constexpr float TURN_SPEED = PLAYER_TURN_SPEED;
-constexpr float MOVE_SPEED = 100.0f;
+constexpr float MOVE_SPEED = 2.5f;
+constexpr float PLAYER_SIZE = 0.2f;
 
 void Player::draw(sf::RenderTarget& target)
 {
@@ -28,25 +29,36 @@ void Player::draw(sf::RenderTarget& target)
     target.draw(line);
 }
 
-void Player::update(float deltaTime)
+void Player::update(float deltaTime, const Map& map)
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A)) {
         angle -= TURN_SPEED * deltaTime;
     }
-
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D)) {
         angle += TURN_SPEED * deltaTime;
     }
 
+    float radians = angle * PI / 180.0f;
+    sf::Vector2f move {};
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::W)) {
-        float radians = angle * PI / 180.0f;
-        position.x += cos(radians) * MOVE_SPEED * deltaTime;
-        position.y += sin(radians) * MOVE_SPEED * deltaTime;
+        move.x += cos(radians);
+        move.y += sin(radians);
     }
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::S)) {
-        float radians = angle * PI / 180.0f;
-        position.x -= cos(radians) * MOVE_SPEED * deltaTime;
-        position.y -= sin(radians) * MOVE_SPEED * deltaTime;
+        move.x -= cos(radians);
+        move.y -= sin(radians);
+    }
+
+    float xOffset = move.x > 0.0f ? PLAYER_SIZE : -PLAYER_SIZE;
+    float yOffset = move.y > 0.0f ? PLAYER_SIZE : -PLAYER_SIZE;
+    move *= MOVE_SPEED * deltaTime;
+
+    if (map.getMapCell(position.x + move.x + xOffset, position.y, Map::LAYER_WALLS) == 0) {
+        position.x += move.x;
+    }
+    if (map.getMapCell(position.x, position.y + move.y + yOffset, Map::LAYER_WALLS) == 0) {
+        position.y += move.y;
     }
 }
